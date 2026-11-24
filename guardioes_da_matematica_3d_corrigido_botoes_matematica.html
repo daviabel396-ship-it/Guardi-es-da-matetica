@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Guardiões da Matemática 3D</title>
+<style>
+*{box-sizing:border-box}
+html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#07111f;color:#fff;font-family:Arial,sans-serif;touch-action:none}
+#game{position:fixed;inset:0}
+canvas{display:block;width:100%;height:100%}
+#hud{position:fixed;z-index:5;top:7px;left:7px;right:7px;display:flex;gap:5px;pointer-events:none}
+.info{flex:1;min-width:0;text-align:center;padding:7px 3px;background:#06111ddd;border:1px solid #38bdf8;border-radius:9px;font-size:11px}
+.info span{font-size:15px;font-weight:bold;color:#fde047}
+#cross{position:fixed;z-index:6;left:50%;top:50%;transform:translate(-50%,-50%);font-size:27px;font-weight:bold;text-shadow:0 0 4px #000;pointer-events:none;display:none}
+#message{position:fixed;z-index:7;top:65px;left:5%;width:90%;text-align:center;font-size:16px;font-weight:bold;color:#fde047;text-shadow:2px 2px 4px #000;pointer-events:none}
+#controls{position:fixed;z-index:8;left:10px;right:10px;bottom:10px;display:none;justify-content:space-between;align-items:flex-end;pointer-events:none}
+#joy{width:116px;height:116px;border:2px solid #ffffff88;border-radius:50%;background:#ffffff22;position:relative;pointer-events:auto;touch-action:none}
+#stick{width:48px;height:48px;position:absolute;left:32px;top:32px;border-radius:50%;background:#38bdf8;border:2px solid #fff8}
+.actions{display:flex;flex-direction:column;gap:7px;pointer-events:auto}
+.actions button{width:92px;height:49px;border:2px solid #ffffffaa;border-radius:12px;color:white;font-weight:bold;font-size:13px;touch-action:none}
+#jumpBtn{background:#6d28d9dd}#mathBtn{background:#15803ddd}#upgradeBtn{background:#b45309dd}#shootBtn{background:#b91c1cdd}
+#hint{position:fixed;z-index:6;top:48px;left:4%;width:92%;text-align:center;font-size:12px;text-shadow:1px 1px 3px #000;pointer-events:none;display:none}
+#gun{position:fixed;z-index:4;right:18%;bottom:13%;width:82px;height:38px;background:#2563eb;border:3px solid #111;border-radius:8px;transform:rotate(-12deg);display:none;pointer-events:none}
+#gun:after{content:"";position:absolute;right:-35px;top:8px;width:38px;height:13px;background:#171717;border-radius:3px}
+.screen{position:fixed;z-index:20;inset:0;display:flex;align-items:center;justify-content:center;padding:12px;background:#071426f2;overflow:auto}
+.panel{width:min(510px,100%);max-height:96%;overflow:auto;background:#172b43;border:2px solid #38bdf8;border-radius:18px;padding:17px;text-align:center}
+h1{font-size:23px;color:#38bdf8;margin:4px 0 8px}
+h2{font-size:21px;color:#facc15;margin:5px 0}
+h3{margin:10px 0 6px}
+p{font-size:14px;line-height:1.4;margin:7px 0}
+.panel button{width:100%;padding:13px;margin-top:7px;border:2px solid #7dd3fc;border-radius:11px;background:#075985;color:white;font-size:15px;font-weight:bold}
+.skinRow{display:flex;gap:7px}
+.skinRow button{flex:1;padding:11px 4px;font-size:12px;background:#1e3a5f}
+.skinRow button.selected{background:#0284c7;border:3px solid #facc15}
+#startBtn{background:#15803d;border:3px solid #4ade80;font-size:19px;padding:16px}
+#preview{font-size:27px;font-weight:bold;color:#4ade80}
+#mathScreen,#endScreen{display:none}
+#answer{width:100%;padding:12px;border:0;border-radius:9px;font-size:22px;text-align:center;margin:10px 0}
+#feedback{min-height:20px;font-weight:bold}
+.credits{background:#0b1728;padding:9px;border-radius:10px;font-size:12px;line-height:1.6;margin-top:10px}
+#debug{position:fixed;z-index:30;left:5px;bottom:2px;font-size:10px;color:#ffdf5d;pointer-events:none}
+#rotateWarn{display:none;position:fixed;z-index:40;inset:0;background:#071426;align-items:center;justify-content:center;text-align:center;padding:30px;font-size:22px;font-weight:bold}
+@media(orientation:portrait){#rotateWarn{display:flex}}
+.hidden{display:none!important}
+</style>
+</head>
+<body>
+<div id="rotateWarn">VIRE O CELULAR<br><br>Jogue com o aparelho deitado.</div>
+<div id="game"></div>
+<div id="hud">
+ <div class="info">PONTOS<br><span id="score">0</span></div>
+ <div class="info">VIDA<br><span id="life">100</span></div>
+ <div class="info">ABATES<br><span id="kills">0</span>/<span id="required">5</span></div>
+ <div class="info">FASE<br><span id="phase">1</span></div>
+ <div class="info">SKIN<br><span id="hudSkin">Guerreiro</span></div>
+ <div class="info">ARMA<br><span id="weaponHUD">NV. 1 · 0/3</span></div>
+</div>
+<div id="cross">+</div><div id="gun"></div>
+<div id="hint">Joystick: andar • Arraste o lado direito: olhar • ATIRAR: atacar</div>
+<div id="message"></div>
+<div id="controls">
+ <div id="joy"><div id="stick"></div></div>
+ <div class="actions">
+  <button id="jumpBtn">PULAR</button>
+  <button id="mathBtn">MATEMÁTICA</button>
+  <button id="upgradeBtn">FORJAR ARMA</button>
+  <button id="shootBtn">ATIRAR</button>
+ </div>
+</div>
+<div id="debug"></div>
+
+<div id="startScreen" class="screen">
+ <div class="panel">
+  <h1>GUARDIÕES DA MATEMÁTICA 3D</h1>
+  <p><b>JOGO EM PRIMEIRA PESSOA • 360 GRAUS</b></p>
+  <div id="preview">GUERREIRO</div><p id="previewText">Escolhido: Guerreiro</p>
+  <h3>ESCOLHA SUA SKIN:</h3>
+  <div class="skinRow">
+   <button class="skinBtn selected" id="skin-guerreiro" onclick="selectSkin('guerreiro')">GUERREIRO</button>
+   <button class="skinBtn" id="skin-mago" onclick="selectSkin('mago')">MAGO</button>
+   <button class="skinBtn" id="skin-ninja" onclick="selectSkin('ninja')">NINJA</button>
+  </div>
+  <p><b>Fase 1:</b> Floresta – Slimes<br><b>Fase 2:</b> Masmorra – Esqueletos<br><b>Fase 3:</b> Vulcão – Demônios</p>
+  <button id="startBtn" onclick="startGame()">JOGAR AGORA</button>
+  <div class="credits"><b>ORGANIZADORES:</b><br>Junior | Chaguinha | Jessica<br>Maria Eduarda | Davi</div>
+ </div>
+</div>
+
+<div id="mathScreen" class="screen">
+ <div class="panel">
+  <h2>DESAFIO DE MATEMÁTICA!</h2>
+  <p>Resolva para recuperar vida e ganhar pontos.</p>
+  <h2 id="question">2 + 2 = ?</h2>
+  <input id="answer" type="number" inputmode="numeric" placeholder="Sua resposta">
+  <p id="feedback"></p>
+  <button onclick="checkAnswer()">RESPONDER</button>
+  <button onclick="closeMath()" style="background:#475569;border-color:#94a3b8">VOLTAR AO JOGO</button>
+ </div>
+</div>
+<div id="endScreen" class="screen">
+ <div class="panel">
+  <h1 id="endTitle">FIM DE JOGO</h1>
+  <p id="endText"></p>
+  <p><b>Organizadores:</b><br>Junior, Chaguinha, Jessica, Maria Eduarda e Davi</p>
+  <button onclick="location.reload()">JOGAR DE NOVO</button>
+ </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+"use strict";
+let scene,camera,renderer,clock,player;
+let enemies=[],shots=[],worldGroup;
+let score=0,life=100,kills=0,phase=1,requiredKills=5;
+let weaponLevel=1,weaponXP=0;
+let mathAnswer=0;
+const MAX_WEAPON_LEVEL=5, XP_PER_LEVEL=3;
+let selectedSkin="guerreiro",running=false,mathOpen=false,mathMode="normal";
+let yaw=0,pitch=0,moveX=0,moveZ=0,verticalSpeed=0,onGround=true;
+let lastShot=0,lookPointer=null,lastLookX=0,lastLookY=0;
+const skins={
+ guerreiro:{name:"Guerreiro",color:0x2563eb,shot:0x60a5fa},
+ mago:{name:"Mago",color:0x7c3aed,shot:0xc084fc},
+ ninja:{name:"Ninja",color:0x252525,shot:0xfacc15}
+};
+const phases=[
+ {name:"Floresta dos Slimes",floor:0x347a36,wall:0x285b35,sky:0x87b8d5,monster:"slime",enemy:0x22c55e},
+ {name:"Masmorra dos Esqueletos",floor:0x55515a,wall:0x393442,sky:0x171827,monster:"esqueleto",enemy:0xe5e7eb},
+ {name:"Vulcão dos Demônios",floor:0x55221c,wall:0x3a1717,sky:0x281018,monster:"demônio",enemy:0xdc2626}
+];
+function el(id){return document.getElementById(id)}
+function say(text){el("message").textContent=text;clearTimeout(say.timer);say.timer=setTimeout(()=>el("message").textContent="",2600)}
+function selectSkin(name){
+ selectedSkin=name;
+ document.querySelectorAll(".skinBtn").forEach(b=>b.classList.remove("selected"));
+ el("skin-"+name).classList.add("selected");
+ el("preview").textContent=skins[name].name.toUpperCase();
+ el("previewText").textContent="Escolhido: "+skins[name].name;
+ el("hudSkin").textContent=skins[name].name;
+ updateWeaponAppearance();
+}
+function startGame(){
+ if(typeof THREE==="undefined"){el("debug").textContent="Não foi possível carregar o Three.js. Verifique a internet e recarregue a página.";return}
+ el("startScreen").style.display="none";
+ el("controls").style.display="flex";el("cross").style.display="block";el("gun").style.display="block";el("hint").style.display="block";
+ running=true;
+ try{init3D();say("Fase 1: "+phases[0].name)}catch(e){
+  running=false;
+  el("debug").textContent="ERRO AO INICIAR: "+(e&&e.message?e.message:String(e));
+  el("startScreen").style.display="flex";
+  el("controls").style.display="none";el("cross").style.display="none";el("gun").style.display="none";
+  console.error(e);
+ }
+ setTimeout(()=>el("hint").style.display="none",6500);
+}
+function init3D(){
+ const testCanvas=document.createElement("canvas");
+ if(!testCanvas.getContext("webgl")&&!testCanvas.getContext("experimental-webgl")){
+  throw new Error("WebGL não está disponível neste navegador. Ative a aceleração gráfica ou use outro navegador.");
+ }
+ scene=new THREE.Scene();scene.background=new THREE.Color(phases[0].sky);scene.fog=new THREE.Fog(phases[0].sky,22,65);
+ camera=new THREE.PerspectiveCamera(75,innerWidth/innerHeight,.1,150);
+ camera.position.set(0,1.65,14);
+ renderer=new THREE.WebGLRenderer({antialias:true});
+ renderer.setPixelRatio(Math.min(devicePixelRatio,1.7));renderer.setSize(innerWidth,innerHeight);
+ el("game").appendChild(renderer.domElement);
+ scene.add(new THREE.HemisphereLight(0xffffff,0x35405a,1.15));
+ const sun=new THREE.DirectionalLight(0xffffff,.8);sun.position.set(8,18,10);scene.add(sun);
+ player=new THREE.Object3D();player.position.set(0,0,14);scene.add(player);player.add(camera);
+ createFirstPersonWeapon();
+ clock=new THREE.Clock();
+ buildWorld();spawnEnemies();updateHUD();
+ window.addEventListener("resize",resizeGame);
+ animate();
+}
+function resizeGame(){if(!camera||!renderer)return;camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)}
+function material(color){return new THREE.MeshStandardMaterial({color,roughness:.9})}
+function buildWorld(){
+ if(worldGroup)scene.remove(worldGroup);
+ worldGroup=new THREE.Group();scene.add(worldGroup);
+ const p=phases[phase-1];scene.background=new THREE.Color(p.sky);scene.fog=new THREE.Fog(p.sky,22,65);
+ const floor=new THREE.Mesh(new THREE.PlaneGeometry(70,70),material(p.floor));floor.rotation.x=-Math.PI/2;floor.position.y=-.08;worldGroup.add(floor);
+ const wallMat=material(p.wall);
+ const walls=[[0,-35,70,2],[0,35,70,2],[-35,0,2,70],[35,0,2,70]];
+ walls.forEach(a=>{let m=new THREE.Mesh(new THREE.BoxGeometry(a[2],6,a[3]),wallMat);m.position.set(a[0],3,a[1]);worldGroup.add(m)});
+ if(phase===1){
+  for(let x=-25;x<=25;x+=10)for(let z=-25;z<=25;z+=12){
+   if(Math.abs(x)<7&&Math.abs(z-14)<8)continue;
+   let trunk=new THREE.Mesh(new THREE.CylinderGeometry(.35,.5,3.5,7),material(0x694321));trunk.position.set(x,1.7,z);worldGroup.add(trunk);
+   let crown=new THREE.Mesh(new THREE.SphereGeometry(2.1,8,7),material(0x16803b));crown.position.set(x,4,z);worldGroup.add(crown);
+  }
+ }else{
+  for(let x=-25;x<=25;x+=12)for(let z=-25;z<=25;z+=14){
+   if(Math.abs(x)<7&&Math.abs(z-14)<8)continue;
+   let pillar=new THREE.Mesh(new THREE.BoxGeometry(2,5,2),wallMat);pillar.position.set(x,2.5,z);worldGroup.add(pillar);
+  }
+ }
+ // Rochas e tochas decorativas
+ for(let i=0;i<18;i++){
+  let x=(Math.random()-.5)*54,z=(Math.random()-.5)*54;
+  if(Math.hypot(x,z-14)<8)continue;
+  let rock=new THREE.Mesh(new THREE.DodecahedronGeometry(.5+Math.random()*.6,0),material(phase===3?0x64251b:0x777777));
+  rock.position.set(x,.35,z);worldGroup.add(rock);
+ }
+ for(let i=0;i<6;i++){
+  let x=i%2?31:-31,z=-25+ i*10;
+  let pole=new THREE.Mesh(new THREE.CylinderGeometry(.12,.16,1.5,7),material(0x70451f));pole.position.set(x,.8,z);worldGroup.add(pole);
+  let flame=new THREE.Mesh(new THREE.SphereGeometry(.35,8,8),new THREE.MeshBasicMaterial({color:phase===3?0xff3b12:0xffa500}));flame.position.set(x,1.8,z);worldGroup.add(flame);
+  let light=new THREE.PointLight(0xff8a22,1.1,12);light.position.set(x,2,z);worldGroup.add(light);
+ }
+}
+function createFirstPersonWeapon(){
+ const rig=new THREE.Group();
+ const sleeveMat=new THREE.MeshStandardMaterial({color:skins[selectedSkin].color,roughness:.9});
+ const skinMat=new THREE.MeshStandardMaterial({color:0xc98e68,roughness:.9});
+ const darkMat=new THREE.MeshStandardMaterial({color:0x20242b,roughness:.55});
+ const metalMat=new THREE.MeshStandardMaterial({color:0x8794a5,metalness:.7,roughness:.3});
+ const weaponMat=new THREE.MeshStandardMaterial({color:0x2563eb,metalness:.25,roughness:.45});
+ // Braço direito e manga
+ const forearm=new THREE.Mesh(new THREE.CylinderGeometry(.105,.145,.48,12),sleeveMat);
+ forearm.position.set(.39,-.43,-.62);forearm.rotation.set(-.45,0,-.55);rig.add(forearm);
+ // Mão envolvendo o cabo
+ const palm=new THREE.Mesh(new THREE.BoxGeometry(.19,.16,.18),skinMat);
+ palm.position.set(.43,-.30,-.91);palm.rotation.z=-.18;rig.add(palm);
+ for(let i=0;i<4;i++){
+  const finger=new THREE.Mesh(new THREE.CylinderGeometry(.025,.025,.13,8),skinMat);
+  finger.position.set(.35+i*.047,-.35,-.99);finger.rotation.x=1.1;rig.add(finger);
+ }
+ const thumb=new THREE.Mesh(new THREE.CylinderGeometry(.03,.03,.16,8),skinMat);
+ thumb.position.set(.55,-.29,-.94);thumb.rotation.z=-.9;rig.add(thumb);
+ // Corpo da arma, cano, mira e empunhadura
+ const body=new THREE.Mesh(new THREE.BoxGeometry(.19,.17,.48),weaponMat);
+ body.position.set(.46,-.25,-1.08);rig.add(body);
+ const barrel=new THREE.Mesh(new THREE.CylinderGeometry(.045,.055,.43,12),metalMat);
+ barrel.rotation.x=Math.PI/2;barrel.position.set(.46,-.20,-1.48);rig.add(barrel);
+ const grip=new THREE.Mesh(new THREE.BoxGeometry(.13,.24,.15),darkMat);
+ grip.position.set(.45,-.43,-.96);grip.rotation.x=-.18;rig.add(grip);
+ const sight=new THREE.Mesh(new THREE.BoxGeometry(.07,.045,.12),darkMat);
+ sight.position.set(.46,-.14,-1.13);rig.add(sight);
+ camera.add(rig);
+ camera.userData.weaponRig=rig;
+ camera.userData.weaponSleeve=sleeveMat;
+ camera.userData.weaponBody=weaponMat;
+}
+function refreshFirstPersonWeapon(){
+ if(camera&&camera.userData.weaponSleeve)camera.userData.weaponSleeve.color.setHex(skins[selectedSkin].color);
+ if(camera&&camera.userData.weaponBody){
+  const colors=[0x2563eb,0x16a34a,0xeab308,0xea580c,0xdb2777];
+  camera.userData.weaponBody.color.setHex(colors[weaponLevel-1]||colors[0]);
+ }
+}
+
+function makeEnemy(){
+ const group=new THREE.Group(),col=phases[phase-1].enemy;
+ if(phase===1){
+  let body=new THREE.Mesh(new THREE.SphereGeometry(.85,14,12),material(col));body.scale.y=.78;body.position.y=.7;group.add(body);
+  let eyeMat=new THREE.MeshBasicMaterial({color:0x111111});
+  [-.28,.28].forEach(x=>{let eye=new THREE.Mesh(new THREE.SphereGeometry(.09,8,8),eyeMat);eye.position.set(x,1,.72);group.add(eye)});
+ }else if(phase===2){
+  const bone=material(0xe5e7eb),dark=material(0x292929);
+  let torso=new THREE.Mesh(new THREE.BoxGeometry(.75,1,.38),bone);torso.position.y=1.05;group.add(torso);
+  let head=new THREE.Mesh(new THREE.SphereGeometry(.42,10,8),bone);head.position.y=1.85;group.add(head);
+  [-.16,.16].forEach(x=>{let eye=new THREE.Mesh(new THREE.SphereGeometry(.09,8,8),dark);eye.position.set(x,1.9,.36);group.add(eye)});
+  for(let x of [-.52,.52]){let arm=new THREE.Mesh(new THREE.BoxGeometry(.18,.9,.18),bone);arm.position.set(x,1.05,0);group.add(arm)}
+  let legMat=bone;for(let x of [-.22,.22]){let leg=new THREE.Mesh(new THREE.BoxGeometry(.2,.8,.22),legMat);leg.position.set(x,.35,0);group.add(leg)}
+ }else{
+  let body=new THREE.Mesh(new THREE.BoxGeometry(.95,1.35,.65),material(0x991b1b));body.position.y=1.05;group.add(body);
+  let head=new THREE.Mesh(new THREE.SphereGeometry(.48,10,8),material(0xdc2626));head.position.y=2;group.add(head);
+  let hornMat=material(0xfacc15);
+  [-.35,.35].forEach(x=>{let horn=new THREE.Mesh(new THREE.ConeGeometry(.16,.65,7),hornMat);horn.position.set(x,2.58,0);horn.rotation.z=x<0?.35:-.35;group.add(horn)});
+  [-.18,.18].forEach(x=>{let eye=new THREE.Mesh(new THREE.SphereGeometry(.1,8,8),new THREE.MeshBasicMaterial({color:0xffff00}));eye.position.set(x,2.05,.42);group.add(eye)});
+ }
+ return group;
+}
+function spawnEnemies(){
+ enemies.forEach(e=>scene.remove(e));enemies=[];kills=0;requiredKills=3+phase*2;
+ for(let i=0;i<requiredKills;i++){
+  let e=makeEnemy(),angle=Math.random()*Math.PI*2,dist=10+Math.random()*15;
+  e.position.set(Math.cos(angle)*dist,0,14+Math.sin(angle)*dist);
+  e.userData={hp:phase===3?3:phase===2?2:1,speed:.65+Math.random()*.35,hit:0};
+  scene.add(e);enemies.push(e);
+ }
+ updateHUD();
+}
+function updateHUD(){
+ el("score").textContent=score;
+ el("life").textContent=Math.max(0,Math.ceil(life));
+ el("kills").textContent=kills;
+ el("required").textContent=requiredKills;
+ el("phase").textContent=phase;
+ el("weaponHUD").textContent=weaponLevel>=MAX_WEAPON_LEVEL?"NV. "+weaponLevel+" · MAX": "NV. "+weaponLevel+" · "+weaponXP+"/"+XP_PER_LEVEL;
+ updateWeaponAppearance();
+}
+function updateWeaponAppearance(){
+ const colors=[0x60a5fa,0x4ade80,0xfacc15,0xfb923c,0xf472b6];
+ const color=colors[weaponLevel-1]||colors[0];
+ const gun=el("gun");
+ gun.style.background="#"+color.toString(16).padStart(6,"0");
+}
+function gainWeaponXP(){
+ if(weaponLevel>=MAX_WEAPON_LEVEL){say("Arma no nível máximo!");return}
+ weaponXP++;
+ if(weaponXP>=XP_PER_LEVEL){
+  weaponXP=0;
+  weaponLevel++;
+  score+=100;
+  say("ARMA EVOLUIU! Nível "+weaponLevel+" • Dano e velocidade aumentados!");
+  updateHUD();
+ }else{
+  say("Resposta correta! Evolução da arma: "+weaponXP+"/"+XP_PER_LEVEL);
+  updateHUD();
+ }
+}
+function updatePlayer(dt){
+ const forward=new THREE.Vector3(-Math.sin(yaw),0,-Math.cos(yaw));
+ const right=new THREE.Vector3(Math.cos(yaw),0,-Math.sin(yaw));
+ const direction=forward.multiplyScalar(-moveZ).add(right.multiplyScalar(moveX));
+ if(direction.length()>1)direction.normalize();
+ player.position.addScaledVector(direction,dt*7);
+ player.position.x=THREE.MathUtils.clamp(player.position.x,-32,32);
+ player.position.z=THREE.MathUtils.clamp(player.position.z,-32,32);
+ if(!onGround){verticalSpeed-=18*dt;camera.position.y+=verticalSpeed*dt;if(camera.position.y<=1.65){camera.position.y=1.65;verticalSpeed=0;onGround=true}}
+ camera.rotation.order="YXZ";camera.rotation.y=yaw;camera.rotation.x=pitch;
+}
+function shoot(){
+ if(!running||mathOpen)return;
+ const now=performance.now();const cooldown=Math.max(115,330-(weaponLevel-1)*48);if(now-lastShot<cooldown)return;lastShot=now;
+ const origin=camera.getWorldPosition(new THREE.Vector3());
+ const dir=new THREE.Vector3(0,0,-1).applyQuaternion(camera.quaternion).normalize();
+ const bulletColor=[0x60a5fa,0x4ade80,0xfacc15,0xfb923c,0xf472b6][weaponLevel-1]||skins[selectedSkin].shot;
+ const bullet=new THREE.Mesh(new THREE.SphereGeometry(.13+(weaponLevel-1)*.035,8,8),new THREE.MeshBasicMaterial({color:bulletColor}));
+ bullet.position.copy(origin).addScaledVector(dir,.8);scene.add(bullet);
+ shots.push({mesh:bullet,dir:dir.clone(),life:1.4});
+ // Acerta o inimigo mais próximo da mira, com alcance generoso
+ const ray=new THREE.Raycaster(origin,dir,0,42);
+ const targets=[];enemies.forEach(e=>e.traverse(o=>{if(o.isMesh)targets.push(o)}));
+ const hits=ray.intersectObjects(targets,false);
+ if(hits.length){
+  let enemy=enemies.find(e=>{let found=false;e.traverse(o=>{if(o===hits[0].object)found=true});return found});
+  if(enemy){
+   enemy.userData.hp-=weaponLevel;
+   enemy.scale.setScalar(.88);
+   if(enemy.userData.hp<=0){scene.remove(enemy);enemies=enemies.filter(e=>e!==enemy);kills++;score+=100;say("Monstro derrotado! +100 pontos");updateHUD();if(kills>=requiredKills)nextPhaseOrWin()}
+  }
+ }
+}
+function updateEnemies(dt){
+ for(const e of enemies){
+  const dx=player.position.x-e.position.x,dz=player.position.z-e.position.z;
+  const dist=Math.hypot(dx,dz);
+  if(dist>1.35){e.position.x+=(dx/dist)*e.userData.speed*dt;e.position.z+=(dz/dist)*e.userData.speed*dt;e.rotation.y=Math.atan2(dx,dz)}
+  e.position.y=Math.sin(performance.now()*.004+e.id)*.12;
+  if(dist<1.65&&performance.now()-(e.userData.lastHit||0)>900){
+   e.userData.lastHit=performance.now();life-=phase===3?12:8;updateHUD();
+   if(life<=0)endGame(false);
+  }
+ }
+}
+function updateShots(dt){
+ shots=shots.filter(s=>{s.mesh.position.addScaledVector(s.dir,dt*28);s.life-=dt;if(s.life<=0){scene.remove(s.mesh);return false}return true});
+}
+function nextPhaseOrWin(){
+ if(phase<3){phase++;buildWorld();spawnEnemies();player.position.set(0,0,14);yaw=0;pitch=0;life=Math.min(100,life+20);updateHUD();say("FASE "+phase+": "+phases[phase-1].name+"!")}
+ else endGame(true);
+}
+function endGame(win){
+ running=false;el("controls").style.display="none";el("cross").style.display="none";el("gun").style.display="none";
+ el("endTitle").textContent=win?"VITÓRIA!":"FIM DE JOGO";
+ el("endText").textContent=win?"Você venceu as três fases e salvou o mundo da matemática! Pontuação: "+score:"Sua vida acabou. Pontuação: "+score+" • Fase alcançada: "+phase;
+ el("endScreen").style.display="flex";
+}
+function newQuestion(){
+ const op=phase===1?"+":phase===2?"-":"×";
+ let a,b;
+ if(op==="+"){a=2+Math.floor(Math.random()*18);b=1+Math.floor(Math.random()*15);mathAnswer=a+b}
+ else if(op==="-"){a=10+Math.floor(Math.random()*20);b=1+Math.floor(Math.random()*a);mathAnswer=a-b}
+ else{a=2+Math.floor(Math.random()*9);b=2+Math.floor(Math.random()*9);mathAnswer=a*b}
+ el("question").textContent=a+" "+op+" "+b+" = ?";
+ el("answer").value="";el("feedback").textContent="";
+}
+function closeMath(){
+ mathOpen=false;
+ el("mathScreen").style.display="none";
+ el("answer").blur();
+}
+function openMath(){
+ if(!running||mathOpen)return;
+ mathMode="normal";mathOpen=true;
+ el("mathScreen").querySelector("h2").textContent="DESAFIO DE MATEMÁTICA!";
+ newQuestion();el("mathScreen").style.display="flex";el("answer").focus();
+}
+function openUpgradeMath(){
+ if(!running||mathOpen)return;
+ if(weaponLevel>=MAX_WEAPON_LEVEL){say("Sua arma já está no nível máximo!");return}
+ mathMode="forge";mathOpen=true;
+ el("mathScreen").querySelector("h2").textContent="FORJA MATEMÁTICA DA ARMA";
+ newQuestion();el("mathScreen").style.display="flex";el("answer").focus();
+}
+function checkAnswer(){
+ if(Number(el("answer").value)===mathAnswer){
+  score+=50;life=Math.min(100,life+15);
+  if(mathMode==="forge"){gainWeaponXP();gainWeaponXP()}
+  else{gainWeaponXP()}
+  el("feedback").style.color="#4ade80";
+  el("feedback").textContent=weaponLevel>=MAX_WEAPON_LEVEL
+   ?"Correto! Sua arma chegou ao nível máximo!"
+   :(mathMode==="forge"?"Resposta certa! A forja concedeu 2 pontos de evolução.":"Correto! +50 pontos, +15 de vida e +1 experiência de arma.");
+  updateHUD();
+  setTimeout(()=>{if(mathOpen)closeMath()},1100)
+ }
+ else{el("feedback").style.color="#f87171";el("feedback").textContent="Ainda não! Tente novamente."}
+}
+function animate(){
+ if(!renderer)return;
+ requestAnimationFrame(animate);
+ const dt=Math.min(clock.getDelta(),.05);
+ if(running&&!mathOpen){updatePlayer(dt);updateEnemies(dt);updateShots(dt)}
+ renderer.render(scene,camera);
+}
+// Joystick: toque e arraste dentro do círculo
+const joy=el("joy"),stick=el("stick");
+function setJoy(e){
+ const r=joy.getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height/2;
+ let dx=e.clientX-cx,dy=e.clientY-cy,max=38,len=Math.hypot(dx,dy);
+ if(len>max){dx=dx/len*max;dy=dy/len*max}
+ stick.style.left=(34+dx)+"px";stick.style.top=(34+dy)+"px";
+ moveX=dx/max;moveZ=dy/max;
+}
+joy.addEventListener("pointerdown",e=>{joy.setPointerCapture(e.pointerId);setJoy(e)});
+joy.addEventListener("pointermove",e=>{if(e.buttons)setJoy(e)});
+function resetJoy(){moveX=0;moveZ=0;stick.style.left="32px";stick.style.top="32px"}
+joy.addEventListener("pointerup",resetJoy);joy.addEventListener("pointercancel",resetJoy);
+// Arrastar no lado direito da tela para olhar em 360 graus
+rendererSafeLook();
+function rendererSafeLook(){
+ document.addEventListener("pointerdown",e=>{
+  if(!running||mathOpen||e.clientX<innerWidth*.42||e.target.closest("button")||e.target.closest("#joy"))return;
+  lookPointer=e.pointerId;lastLookX=e.clientX;lastLookY=e.clientY;
+ });
+ document.addEventListener("pointermove",e=>{
+  if(lookPointer!==e.pointerId||!running||mathOpen)return;
+  const dx=e.clientX-lastLookX,dy=e.clientY-lastLookY;lastLookX=e.clientX;lastLookY=e.clientY;
+  yaw-=dx*.006;pitch-=dy*.004;pitch=THREE.MathUtils.clamp(pitch,-1.15,1.15);
+ });
+ document.addEventListener("pointerup",e=>{if(lookPointer===e.pointerId)lookPointer=null});
+ document.addEventListener("pointercancel",()=>lookPointer=null);
+}
+el("shootBtn").addEventListener("pointerdown",e=>{e.preventDefault();shoot()});
+el("jumpBtn").addEventListener("pointerdown",e=>{e.preventDefault();if(running&&onGround&&!mathOpen){onGround=false;verticalSpeed=6.5}});
+el("mathBtn").addEventListener("pointerdown",e=>{e.preventDefault();openMath()});
+el("upgradeBtn").addEventListener("pointerdown",e=>{e.preventDefault();openUpgradeMath()});
+el("answer").addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();checkAnswer()}});
+window.addEventListener("error",e=>{el("debug").textContent="ERRO: "+e.message});
+</script>
+</body>
+</html>
